@@ -1,33 +1,3 @@
-import "dotenv/config";
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import { v4 as uuidv4 } from "uuid";
-import OpenAI from "openai";
-
-const app = express();
-app.use(express.json({ limit: "1mb" }));
-app.use(cors({ origin: "*", methods: ["GET","POST"] }));
-app.use(helmet());
-
-app.use(rateLimit({
-  windowMs: 60 * 1000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false
-}));
-
-const sessions = new Map();
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-const SYSTEM_PROMPT = `
-Você é um atendente virtual educado, objetivo e proativo.
-- Sempre peça os detalhes necessários para ajudar melhor.
-- Se a pergunta for ambígua, faça 1 pergunta de esclarecimento.
-- Use respostas curtas e claras. Se necessário, liste passos numerados.
-`;
-
 app.post("/chat", async (req, res) => {
   try {
     const { message, sessionId } = req.body;
@@ -61,8 +31,3 @@ app.post("/chat", async (req, res) => {
     res.status(500).json({ error: "Erro interno ao gerar resposta." });
   }
 });
-
-app.get("/", (_req, res) => res.send("Atendente Backend OK"));
-
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`✅ Backend ouvindo em http://localhost:${PORT}`));
