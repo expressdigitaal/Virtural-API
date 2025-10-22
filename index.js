@@ -28,7 +28,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Memória das sessões
+// Memória das sessões (para manter contexto de conversa)
 const sessions = new Map();
 
 const SYSTEM_PROMPT = `
@@ -41,7 +41,7 @@ app.get("/", (req, res) => {
   res.send("Atendente Backend OK ✅");
 });
 
-// 🔹 Rota de chat
+// 🔹 Rota de chat (principal)
 app.post("/chat", async (req, res) => {
   try {
     const { message, sessionId } = req.body;
@@ -55,17 +55,26 @@ app.post("/chat", async (req, res) => {
 
     const input = [
       { role: "system", content: [{ type: "text", text: SYSTEM_PROMPT }] },
-      ...history.map(h => ({ role: h.role, content: [{ type: "text", text: h.text }] })),
-      { role: "user", content: [{ type: "text", text: message }] }
+      ...history.map((h) => ({
+        role: h.role,
+        content: [{ type: "text", text: h.text }],
+      })),
+      { role: "user", content: [{ type: "text", text: message }] },
     ];
 
-    const response = await openai.responses.create({
-      model: "gpt-5",
-      input,
+    // Chamada ao modelo de chat da OpenAI
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: input.map((m) => ({
+        role: m.role,
+        content: m.content[0].text,
+      })),
       temperature: 0.7,
     });
 
-    const botText = response.output_text?.trim() || "Desculpe, não consegui responder agora.";
+    const botText =
+      completion.choices[0].message.content?.trim() ||
+      "Desculpe, não consegui responder agora.";
 
     const newHistory = [
       ...history,
@@ -77,8 +86,10 @@ app.post("/chat", async (req, res) => {
 
     res.json({ sessionId: sid, reply: botText });
   } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: "Erro interno ao gerar resposta." });
+    console.error("❌ ERRO DETALHADO:", e);
+    res
+      .status(500)
+      .json({ error: e.message || "Erro interno ao gerar resposta." });
   }
 });
 
