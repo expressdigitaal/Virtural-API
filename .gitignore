@@ -1,0 +1,3 @@
+# Ignorar variáveis secretas e dependências
+.env
+node_modules
